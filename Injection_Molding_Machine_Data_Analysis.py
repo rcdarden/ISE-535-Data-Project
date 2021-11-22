@@ -50,15 +50,14 @@ Created on Mon Oct 25 14:32:36 2021
 # worked on main code, same as yesterday. Using comparison columns to generate Good/Bad cycle dataframe
 # success at pulling info for bad cycles due to 'Cycle time' :)
 # 18NOV21
-# continued buliding up code for all defects
+# continued buliding up code for all injection molding defects
 # got main code parsing all required info, now need to pass that info to dashboard
 # https://stackoverflow.com/questions/61423054/plotly-dash-show-variable-value-in-output
-# 
+# cleaned up code and comments
 
 
-'''
- access exported file, create new .csv file with correct header and dataframe formatting
-'''
+
+ 
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
@@ -66,7 +65,7 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 
-
+# access exported file, create new .csv file with correct header and dataframe formatting
 
 header = pd.read_csv('C:/Users/cdarden/Desktop/Personal BS/ISE 535/Injection_Molding_Project/headerRow.csv')
 headerList = list(header)
@@ -84,48 +83,31 @@ df.to_csv('C:/Users/cdarden/Desktop/Personal BS/ISE 535/Injection_Molding_Projec
 
 df = pd.read_csv('C:/Users/cdarden/Desktop/Personal BS/ISE 535/Injection_Molding_Project/machineDataFormatted.csv', index_col=('Cycle')) 
 df.drop(df.columns[df.columns.str.contains('Unnamed',case = False)],axis = 1, inplace = True)       # drops 'Unnamed' column from df
-'''
-average cycle time
-'''
+
+# average cycle time, key metric to be displayed on dashboard
 aveCycleTime = float("{:.2f}".format(df["Cycle time"].mean()))
-#print (aveCycleTime)                    # key metric to be displayed on dashboard
-'''
-size of dataset (number of cycles)
-'''
+              
+# number of cycles
 dfCycles = df.shape[0]
 
-'''
-access parameterDB.csv
-'''
+# access parameterDB.csv
 parameters = pd.read_csv('C:/Users/cdarden/Desktop/Personal BS/ISE 535/Injection_Molding_Project/parameterDB.csv')
-'''
-input part number (testing)
-'''
+
+# input part number (testing)
 partNum = input("Enter Part Number: ")   # as type string
-'''
-read parameter database 
-'''
+
+# read parameter database , which contains range values for monitored parameters 
 parameterDB = pd.read_csv('C:/Users/cdarden/Desktop/Personal BS/ISE 535/Injection_Molding_Project/parameterDB.csv')  # contains parameter set for all part numbers
 
-'''
-make a new df containing parameter set if partNum in Part Number column of parameterDB, this dataframe contains only the parameter ranges of the PN
-
-'''
+# make a new df containing parameter set if partNum in Part Number column of parameterDB, this dataframe contains only the parameter ranges of the PN
 pnList = [partNum]
 pnParamDB = parameterDB[parameterDB['Part Number'].isin(pnList)]
 
-'''
-reduce the two dataframes down to only the columns of interest for speed
-'''
-
-
+# reduce the two dataframes down to only the columns of interest
 pnParamDB = pnParamDB[['Cycle time','Inj time','Plast time','Melt cushion','Switch MeltPr','Max MeltPr','SCF dosing','SCF inj open time','SCF OP drop','Max CavPr1','Barrel Z4']]
 df = df[['Cycle time','Inj time','Plast time','Melt cushion','Switch MeltPr','Max MeltPr','SCF dosing','SCF inj open time','SCF OP drop','Max CavPr1','Barrel Z4']]
 
-
-'''
-set monitered parameters in pnParamDB as max/min for PN
-'''
+# set monitered parameters in pnParamDB as max/min for PN
 cycleTimeMax= pnParamDB.iloc[0].at['Cycle time']
 cycleTimeMin= pnParamDB.iloc[1].at['Cycle time']
 
@@ -159,10 +141,7 @@ maxCavPressMin= pnParamDB.iloc[1].at['Max CavPr1']
 barrelZ4Max= pnParamDB.iloc[0].at['Barrel Z4']
 barrelZ4Min= pnParamDB.iloc[1].at['Barrel Z4']
 
-'''
-check each column of df, comparing values to monitered parameters, creating Good/Bad columns
-'''
-
+# check each column of df, comparing values to monitered parameters, creating Good/Bad columns (arrays)
 maxCTGBColumn = np.where(df["Cycle time"] <= cycleTimeMax, 'Good', 'Bad' )
 minCTGBColumn = np.where(df["Cycle time"] >= cycleTimeMin, 'Good', 'Bad' )
 ct_comparison_column = np.where(maxCTGBColumn == minCTGBColumn, 'Good', 'Bad')
@@ -207,9 +186,7 @@ maxBZ4GBColumn = np.where(df["Barrel Z4"] <= barrelZ4Max, 'Good', 'Bad' )
 minBZ4GBColumn = np.where(df["Barrel Z4"] >= barrelZ4Min, 'Good', 'Bad' )
 bz4_comparison_column = np.where(maxBZ4GBColumn == minBZ4GBColumn, 'Good', 'Bad')
 
-'''
-rewrite df with good/bad 
-'''
+# overwrite df with good/bad instead of parameter value
 df['Cycle time'] = ct_comparison_column.tolist()
 df['Inj time'] = it_comparison_column.tolist()
 df['Plast time'] = pt_comparison_column.tolist()
@@ -222,13 +199,11 @@ df['SCF OP drop'] = scfod_comparison_column.tolist()
 df['Max CavPr1'] = mcp_comparison_column.tolist()
 df['Barrel Z4'] = bz4_comparison_column.tolist()
 
-'''
-analyze df for Bad cycles caused by each parameter
-'''
+# analyze df for Bad cycles as indicated by an out of range parameter
 df = df.astype(str)
 
 df2 = df[df['Cycle time'].str.contains('Bad')]   
-badCyclesCT =  df2.shape[0]    
+badCyclesCT =  df2.shape[0]    # creating a new df to contain bad cycles for each parameter 
 
 df3 = df[df['Inj time'].str.contains('Bad')]   
 badCyclesIT =  df3.shape[0]   
@@ -260,33 +235,21 @@ badCyclesMCP =  df11.shape[0]
 df12 = df[df['Barrel Z4'].str.contains('Bad')]   
 badCyclesBZ4 =  df12.shape[0]
 
-'''
-combine defect dfs into one df for parsing
-'''
+# combine defect dfs into one df for parsing
 frames = [df2, df3, df4, df5, df6, df7, df8, df9, df10, df11, df12]
-
 dfDefects = pd.concat(frames)
-
 dfDefects = dfDefects.astype(str)
-
-
 dfDefects.sort_values('Cycle', inplace = True)  # sorting by Cycle
  
-# dropping ALL duplicate values
-
+# dropping all duplicate values, this prevents double-counting a cycle that has multiple parameters out of spec
 dfDefects = dfDefects[~dfDefects.index.duplicated(keep='first')]
-
 totalDefects = dfDefects.shape[0]
 
-'''
-Yield Calculation
-'''
+# Yield Calculation
 machineYield = (1- (totalDefects / dfCycles))*100
 machineYield = float("{:.2f}".format(machineYield))
 
-'''
-print metrics
-'''
+# print metrics
 print(f"Part Number: {partNum}")
 print("Part Name: ")
 print(f"Run Start: {runStartDate} {runStartTime}")
@@ -295,10 +258,7 @@ print(f"Total Cycles: {dfCycles}")
 print(f"Average Cycle Time: {aveCycleTime} sec")
 print(f"Yield: {machineYield} %")
 
-'''
-Dash code (for dashboard)
-'''
-
+# Dash code (for dashboard)
 app = dash.Dash()       
 
 # define HTML component
@@ -325,7 +285,7 @@ app.layout = html.Div (children = [html.Div("Injection Molding Data Analysis", s
                                                         }),
                         
                        
-                        html.Div("Part Number:", style = {
+                        html.Div("Part Number: ", style = {
                                                         "color" : "black",
                                                         "font-size" : "30px",
                                                         "background-color" : "DarkOliveGreen",
