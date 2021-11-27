@@ -54,16 +54,31 @@ Created on Mon Oct 25 14:32:36 2021
 # got main code parsing all required info, now need to pass that info to dashboard
 # https://stackoverflow.com/questions/61423054/plotly-dash-show-variable-value-in-output
 # cleaned up code and comments
+# 22NOV21
+# Finally able to pass in variables as text to dash - took a long time and a lot of research to figure out
+# Pushed code to github, but made more changes, adding variables, adjusting layout
+# Made bar chart with matplotlib, dug in deeper to specify colors, format, save to assets
+# 24NOV21
+# Got everything working great, dashboard displaying plot and logo 
+# Attempted to buld out .csv files with different part numbers, then code broke with indexing errors
+# troubleshot indexing errors and found issue with pnParamDB not populating except for header
+# 26NOV21
+# tried running code from both github and local to the error point on VScode, no luck
+# pip installed pandas again, no luck
+# 27NOV21
+# tried differnt workarounds to replace the df.isin() funtion. Using boolean indexing instead, which works.
+# Proceeded to build out part parameter database with different part numbers, added 11872370001
 
-
-
- 
+"""
+Export Krauss Maffei machine data to USB drive and save as 'C:/Users/cdarden/Desktop/Personal BS/ISE 535/Injection_Molding_Project/machineData.csv'
+""" 
 import dash
-import dash_core_components as dcc
 import dash_html_components as html
 import pandas as pd
 import numpy as np
-import plotly.graph_objects as go
+import matplotlib.pyplot as plt
+import base64
+
 
 # access exported file, create new .csv file with correct header and dataframe formatting
 
@@ -90,18 +105,15 @@ aveCycleTime = float("{:.2f}".format(df["Cycle time"].mean()))
 # number of cycles
 dfCycles = df.shape[0]
 
-# access parameterDB.csv
-parameters = pd.read_csv('C:/Users/cdarden/Desktop/Personal BS/ISE 535/Injection_Molding_Project/parameterDB.csv')
-
-# input part number (testing)
+# input part number (must be known: 11841170001)
 partNum = input("Enter Part Number: ")   # as type string
 
 # read parameter database , which contains range values for monitored parameters 
 parameterDB = pd.read_csv('C:/Users/cdarden/Desktop/Personal BS/ISE 535/Injection_Molding_Project/parameterDB.csv')  # contains parameter set for all part numbers
 
-# make a new df containing parameter set if partNum in Part Number column of parameterDB, this dataframe contains only the parameter ranges of the PN
-pnList = [partNum]
-pnParamDB = parameterDB[parameterDB['Part Number'].isin(pnList)]
+# make a new df containing parameter set if partNum in Part Number column of parameterDB, this dataframe contains only the parameter ranges of the PN(2 rows - hi, low)
+mask = parameterDB['Part Number'] == int(partNum) ## fixed bug, previous code used df.isin(), but it seems to have stopped working
+pnParamDB = parameterDB[mask]
 
 # reduce the two dataframes down to only the columns of interest
 pnParamDB = pnParamDB[['Cycle time','Inj time','Plast time','Melt cushion','Switch MeltPr','Max MeltPr','SCF dosing','SCF inj open time','SCF OP drop','Max CavPr1','Barrel Z4']]
@@ -235,6 +247,17 @@ badCyclesMCP =  df11.shape[0]
 df12 = df[df['Barrel Z4'].str.contains('Bad')]   
 badCyclesBZ4 =  df12.shape[0]
 
+# for defect bar chart
+defects = [badCyclesCT, badCyclesIT, badCyclesPT, badCyclesMC, badCyclesSMP, badCyclesMMP, badCyclesSCFD, badCyclesSCFOT, badCyclesSCFOD, badCyclesMCP, badCyclesBZ4]
+labels = ['CycT','InjT','PlasT','MltC','SwMltP','MxMltP','SCFd','SCFnjT','SCFdrp', 'MxCvPr', 'BrlZ4' ]
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+
+ax.bar(labels, defects, color=['gray', 'brown', 'olive', 'green', 'gray', 'brown','olive', 'green', 'gray', 'green', 'olive'], edgecolor='black')
+plt.savefig('C:/Users/cdarden/Desktop/Personal BS/ISE 535/Injection_Molding_Project/assets/defectChart.jpg', bbox_inches='tight')  
+#plt.show()
+
 # combine defect dfs into one df for parsing
 frames = [df2, df3, df4, df5, df6, df7, df8, df9, df10, df11, df12]
 dfDefects = pd.concat(frames)
@@ -249,17 +272,14 @@ totalDefects = dfDefects.shape[0]
 machineYield = (1- (totalDefects / dfCycles))*100
 machineYield = float("{:.2f}".format(machineYield))
 
-# print metrics
-print(f"Part Number: {partNum}")
-print("Part Name: ")
-print(f"Run Start: {runStartDate} {runStartTime}")
-print(f"Run Stop: {runStopDate} {runStopTime}")
-print(f"Total Cycles: {dfCycles}")
-print(f"Average Cycle Time: {aveCycleTime} sec")
-print(f"Yield: {machineYield} %")
-
 # Dash code (for dashboard)
 app = dash.Dash()       
+
+# images
+image_logo = ('C:/Users/cdarden/Desktop/Personal BS/ISE 535/Injection_Molding_Project/assets/PPUSAlogo.jpg')
+encoded_imageLogo = base64.b64encode(open(image_logo, 'rb').read())
+image_chart = ('C:/Users/cdarden/Desktop/Personal BS/ISE 535/Injection_Molding_Project/assets/defectChart.jpg')
+encoded_imageChart = base64.b64encode(open(image_chart, 'rb').read())
 
 # define HTML component
 app.layout = html.Div (children = [html.Div("Injection Molding Data Analysis", style = {
@@ -269,104 +289,174 @@ app.layout = html.Div (children = [html.Div("Injection Molding Data Analysis", s
                                                         "border-style" : "solid",
                                                         "text-align" : "center",
                                                         "display" : "inline-block",
-                                                        "height" : "70px",
-                                                        "width" : "80%"
-                                                        }),
-                
-                        html.Div("LOGO", style = {
-                                                        "color" : "white",
-                                                        "font-size" : "50px",
-                                                        "background-color" : "darkblue",
-                                                        "border-style" : "solid",
-                                                        "text-align" : "center",
-                                                        "display" : "inline-block",
-                                                        "height" : "70px",
-                                                        "width" : "19%"
-                                                        }),
-                        
+                                                        "height" : "80px",
+                                                        "width" : "80%",
+                                                        "padding": "0",
+                                                        "margin": "0"}),
+    
+                        html.Img(src='data:image/jpg;base64,{}'.format(encoded_imageLogo.decode()), style = {
+                                                        "display": "inline-block",
+                                                        "height" : "10%",
+                                                        "width": "10%",
+                                                        "padding": "0",
+                                                        "margin": "0"}),
                        
                         html.Div("Part Number: ", style = {
                                                         "color" : "black",
                                                         "font-size" : "30px",
                                                         "background-color" : "DarkOliveGreen",
                                                         "border-style" : "solid",
-                                                        "text-align" : "left",
+                                                        "text-align" : "center",
                                                         "display" : "inline-block",
-                                                        "height" : "40px",
-                                                        "width" : "25%"
-                                                        }),
+                                                        "height" : "50px",
+                                                        "width" : "14%"}),
                         
-                        html.Div("Part Name:", style = {
-                                                        "color" : "black",
-                                                        "font-size" : "30px",
-                                                        "background-color" : "hsl(184, 6%, 72%)",
-                                                        "border-style" : "solid",
-                                                        "text-align" : "left",
-                                                        "display" : "inline-block",
-                                                        "height" : "40px",
-                                                        "width" : "33%"
-                                                        }),
-                                                
-                        html.Div("Run Start:", style = {
+                        html.P((partNum), style = {
                                                         "color" : "black",
                                                         "font-size" : "30px",
                                                         "background-color" : "DarkOliveGreen",
                                                         "border-style" : "solid",
-                                                        "text-align" : "left",
+                                                        "text-align" : "center",
                                                         "display" : "inline-block",
-                                                        "height" : "40px",
-                                                        "width" : "33%"
-                                                        }),
-                        html.Div("Run Stop:", style = {
+                                                        "height" : "50px",
+                                                        "width" : "14%"}),
+                                               
+                        html.Div("Run Start (D/T):", style = {
                                                         "color" : "black",
                                                         "font-size" : "30px",
                                                         "background-color" : "hsl(184, 6%, 72%)",
                                                         "border-style" : "solid",
-                                                        "text-align" : "left",
+                                                        "text-align" : "center",
                                                         "display" : "inline-block",
-                                                        "height" : "40px",
-                                                        "width" : "25%"
-                                                        }),
-                        html.Div("Total Cycles:", style = {
+                                                        "height" : "50px",
+                                                        "width" : "14%"}),
+                        
+                        html.P((runStartDate), style = {
+                                                        "color" : "black",
+                                                        "font-size" : "30px",
+                                                        "background-color" : "hsl(184, 6%, 72%)",
+                                                        "border-style" : "solid",
+                                                        "text-align" : "center",
+                                                        "display" : "inline-block",
+                                                        "height" : "50px",
+                                                        "width" : "10%"}),
+                        
+                        html.P((runStartTime), style = {
+                                                        "color" : "black",
+                                                        "font-size" : "30px",
+                                                        "background-color" : "hsl(184, 6%, 72%)",
+                                                        "border-style" : "solid",
+                                                        "text-align" : "center",
+                                                        "display" : "inline-block",
+                                                        "height" : "50px",
+                                                        "width" : "10%"}),
+                        
+                        html.Div("Run Stop (D/T):", style = {
                                                         "color" : "black",
                                                         "font-size" : "30px",
                                                         "background-color" : "DarkOliveGreen",
                                                         "border-style" : "solid",
-                                                        "text-align" : "left",
+                                                        "text-align" : "center",
                                                         "display" : "inline-block",
-                                                        "height" : "40px",
-                                                        "width" : "33%"
-                                                        }),
-                        html.Div("Average Cycle Time:", style = {
+                                                        "height" : "50px",
+                                                        "width" : "14%"}),
+                        
+                        html.P((runStopDate), style = {
+                                                        "color" : "black",
+                                                        "font-size" : "30px",
+                                                        "background-color" : "DarkOliveGreen",
+                                                        "border-style" : "solid",
+                                                        "text-align" : "center",
+                                                        "display" : "inline-block",
+                                                        "height" : "50px",
+                                                        "width" : "10%"}),
+                        
+                        html.P((runStopTime), style = {
+                                                        "color" : "black",
+                                                        "font-size" : "30px",
+                                                        "background-color" : "DarkOliveGreen",
+                                                        "border-style" : "solid",
+                                                        "text-align" : "center",
+                                                        "display" : "inline-block",
+                                                        "height" : "50px",
+                                                        "width" : "10%"}),
+                        
+                        html.Div("Total Cycles: ", style = {
                                                         "color" : "black",
                                                         "font-size" : "30px",
                                                         "background-color" : "hsl(184, 6%, 72%)",
                                                         "border-style" : "solid",
-                                                        "text-align" : "left",
+                                                        "text-align" : "center",
                                                         "display" : "inline-block",
-                                                        "height" : "40px",
-                                                        "width" : "33%"
-                                                        }),
+                                                        "height" : "50px",
+                                                        "width" : "16%"}),
+                        
+                        html.P((dfCycles), style = {
+                                                        "color" : "black",
+                                                        "font-size" : "30px",
+                                                        "background-color" : "hsl(184, 6%, 72%)",
+                                                        "border-style" : "solid",
+                                                        "text-align" : "center",
+                                                        "display" : "inline-block",
+                                                        "height" : "50px",
+                                                        "width" : "16%"}),
+                        
                         html.Div("Yield:", style = {
                                                         "color" : "black",
                                                         "font-size" : "30px",
                                                         "background-color" : "DarkOliveGreen",
                                                         "border-style" : "solid",
-                                                        "text-align" : "left",
+                                                        "text-align" : "center",
                                                         "display" : "inline-block",
-                                                        "height" : "40px",
-                                                        "width" : "25%"
-                                                        }),
+                                                        "height" : "50px",
+                                                        "width" : "16%"}),
+                        
+                        html.P((machineYield), style = {
+                    									   "color" : "black",
+                                                        "font-size" : "30px",
+                                                        "background-color" : "DarkOliveGreen",
+                                                        "border-style" : "solid",
+                                                        "text-align" : "center",
+                                                        "display" : "inline-block",
+                                                        "height" : "50px",
+                                                        "width" : "16%"}),
+                        
+                        html.Div("Average Cycle Time:", style = {
+                                                        "color" : "black",
+                                                        "font-size" : "30px",
+                                                        "background-color" : "hsl(184, 6%, 72%)",
+                                                        "border-style" : "solid",
+                                                        "text-align" : "center",
+                                                        "display" : "inline-block",
+                                                        "height" : "50px",
+                                                        "width" : "16%"}),
+                        
+                        html.P((aveCycleTime), style = {
+                    									   "color" : "black",
+                                                        "font-size" : "30px",
+                                                        "background-color" : "hsl(184, 6%, 72%)",
+                                                        "border-style" : "solid",
+                                                        "text-align" : "center",
+                                                        "display" : "inline-block",
+                                                        "height" : "50px",
+                                                        "width" : "16%"}),
+                        
                         html.Div("Defects:", style = {
                                                         "color" : "black",
                                                         "font-size" : "30px",
                                                         "background-color" : "Khaki",
                                                         "border-style" : "solid",
-                                                        "text-align" : "left",
+                                                        "text-align" : "center",
                                                         "display" : "inline-block",
-                                                        "height" : "900px",
-                                                        "width" : "99%"
-                                                        }),])
+                                                        "height" : "50px",
+                                                        "width" : "99%"}),
+                        
+                        html.Img(src='data:image/jpg;base64,{}'.format(encoded_imageChart.decode()), style = {
+                                                        "display": "block",
+                                                        "margin-left": "auto",
+                                                        "margin-right": "auto",
+                                                        "width": "35%"}),   
+                        ])
 
 if __name__ == '__main__':
     app.run_server()
