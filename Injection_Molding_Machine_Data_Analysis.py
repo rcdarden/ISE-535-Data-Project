@@ -50,7 +50,7 @@ Created on Mon Oct 25 14:32:36 2021
 # worked on main code, same as yesterday. Using comparison columns to generate Good/Bad cycle dataframe
 # success at pulling info for bad cycles due to 'Cycle time' :)
 # 18NOV21
-# continued buliding up code for all injection molding defects
+# continued building up code for all injection molding defects
 # got main code parsing all required info, now need to pass that info to dashboard
 # https://stackoverflow.com/questions/61423054/plotly-dash-show-variable-value-in-output
 # cleaned up code and comments
@@ -68,9 +68,19 @@ Created on Mon Oct 25 14:32:36 2021
 # 27NOV21
 # tried differnt workarounds to replace the df.isin() funtion. Using boolean indexing instead, which works.
 # Proceeded to build out part parameter database with different part numbers, added 11872370001
+# pushed code in local repository to github (fully functional)
+# 29NOV21
+# testing code, selecting wrong part number for defect analysis (works)
+# trying to change background color with CSS formatting, success (finally)
+# tweaked dashboard appearance, got pretty deep into CSS styling
+# Happy with the way the dashboard looks and the functionality of the code, pushed to Github
+
+
+
+
 
 """
-Export Krauss Maffei machine data to USB drive and save as 'C:/Users/cdarden/Desktop/Personal BS/ISE 535/Injection_Molding_Project/machineData.csv'
+Export Krauss Maffei machine data to USB drive and save as 'C:/Users/cdarden/Desktop/Personal BS/ISE 535/Injection_Molding_Project/machineData(11 digit part number).csv'
 """ 
 import dash
 import dash_html_components as html
@@ -82,10 +92,12 @@ import base64
 
 # access exported file, create new .csv file with correct header and dataframe formatting
 
+partNum = input("Enter 11 digit Part Number: ")   # as type string
+
 header = pd.read_csv('C:/Users/cdarden/Desktop/Personal BS/ISE 535/Injection_Molding_Project/headerRow.csv')
 headerList = list(header)
 
-file = pd.read_csv('C:/Users/cdarden/Desktop/Personal BS/ISE 535/Injection_Molding_Project/machineData.csv') 
+file = pd.read_csv(f'C:/Users/cdarden/Desktop/Personal BS/ISE 535/Injection_Molding_Project/machineData{partNum}.csv')  # f(string) points to whichever dataset is queued up under that PN
 df = file.drop([0,1,2,3,4,5,6], axis=0)      # drops the first 7 rows from the file for formatting purposes
 
 runStartDate = df.iloc[7]['Export actual-value cycles onto USB stick']
@@ -105,8 +117,6 @@ aveCycleTime = float("{:.2f}".format(df["Cycle time"].mean()))
 # number of cycles
 dfCycles = df.shape[0]
 
-# input part number (must be known: 11841170001)
-partNum = input("Enter Part Number: ")   # as type string
 
 # read parameter database , which contains range values for monitored parameters 
 parameterDB = pd.read_csv('C:/Users/cdarden/Desktop/Personal BS/ISE 535/Injection_Molding_Project/parameterDB.csv')  # contains parameter set for all part numbers
@@ -247,16 +257,16 @@ badCyclesMCP =  df11.shape[0]
 df12 = df[df['Barrel Z4'].str.contains('Bad')]   
 badCyclesBZ4 =  df12.shape[0]
 
-# for defect bar chart
+# defect bar chart
 defects = [badCyclesCT, badCyclesIT, badCyclesPT, badCyclesMC, badCyclesSMP, badCyclesMMP, badCyclesSCFD, badCyclesSCFOT, badCyclesSCFOD, badCyclesMCP, badCyclesBZ4]
 labels = ['CycT','InjT','PlasT','MltC','SwMltP','MxMltP','SCFd','SCFnjT','SCFdrp', 'MxCvPr', 'BrlZ4' ]
 
 fig = plt.figure()
 ax = fig.add_axes([0,0,1,1])
-
 ax.bar(labels, defects, color=['gray', 'brown', 'olive', 'green', 'gray', 'brown','olive', 'green', 'gray', 'green', 'olive'], edgecolor='black')
+plt.xticks(rotation = 45)  # rotate label ticks to make them less crowded
 plt.savefig('C:/Users/cdarden/Desktop/Personal BS/ISE 535/Injection_Molding_Project/assets/defectChart.jpg', bbox_inches='tight')  
-#plt.show()
+
 
 # combine defect dfs into one df for parsing
 frames = [df2, df3, df4, df5, df6, df7, df8, df9, df10, df11, df12]
@@ -273,7 +283,8 @@ machineYield = (1- (totalDefects / dfCycles))*100
 machineYield = float("{:.2f}".format(machineYield))
 
 # Dash code (for dashboard)
-app = dash.Dash()       
+app = dash.Dash() 
+      
 
 # images
 image_logo = ('C:/Users/cdarden/Desktop/Personal BS/ISE 535/Injection_Molding_Project/assets/PPUSAlogo.jpg')
@@ -282,24 +293,27 @@ image_chart = ('C:/Users/cdarden/Desktop/Personal BS/ISE 535/Injection_Molding_P
 encoded_imageChart = base64.b64encode(open(image_chart, 'rb').read())
 
 # define HTML component
-app.layout = html.Div (children = [html.Div("Injection Molding Data Analysis", style = {
+app.layout = html.Div ( style={"backgroundColor": "navy"},
+        children = [
+                        html.Div("Injection Molding Data Analysis", style = {
                                                         "color" : "black",
                                                         "font-size" : "50px",
                                                         "background-color" : "DimGrey",
                                                         "border-style" : "solid",
                                                         "text-align" : "center",
                                                         "display" : "inline-block",
-                                                        "height" : "80px",
+                                                        "height" : "60px",
                                                         "width" : "80%",
-                                                        "padding": "0",
-                                                        "margin": "0"}),
+                                                        "margin-left": "130px",
+                                                        "padding": "-20"}),
     
                         html.Img(src='data:image/jpg;base64,{}'.format(encoded_imageLogo.decode()), style = {
-                                                        "display": "inline-block",
-                                                        "height" : "10%",
-                                                        "width": "10%",
-                                                        "padding": "0",
-                                                        "margin": "0"}),
+                                                        "display" : "inline-block",
+                                                        "height" : "80px",
+                                                        "width": "90px",
+                                                        "padding": "10",
+                                                        "margin-top": "30px",
+                                                        "margin-left": "40px"}),
                        
                         html.Div("Part Number: ", style = {
                                                         "color" : "black",
@@ -308,7 +322,9 @@ app.layout = html.Div (children = [html.Div("Injection Molding Data Analysis", s
                                                         "border-style" : "solid",
                                                         "text-align" : "center",
                                                         "display" : "inline-block",
-                                                        "height" : "50px",
+                                                        "height" : "40px",
+                                                        "padding": "-10",
+                                                        "margin-left": "10px",
                                                         "width" : "14%"}),
                         
                         html.P((partNum), style = {
@@ -318,7 +334,8 @@ app.layout = html.Div (children = [html.Div("Injection Molding Data Analysis", s
                                                         "border-style" : "solid",
                                                         "text-align" : "center",
                                                         "display" : "inline-block",
-                                                        "height" : "50px",
+                                                        "height" : "40px",
+                                                        "padding": "-10",
                                                         "width" : "14%"}),
                                                
                         html.Div("Run Start (D/T):", style = {
@@ -328,7 +345,8 @@ app.layout = html.Div (children = [html.Div("Injection Molding Data Analysis", s
                                                         "border-style" : "solid",
                                                         "text-align" : "center",
                                                         "display" : "inline-block",
-                                                        "height" : "50px",
+                                                        "height" : "40px",
+                                                        "padding": "-10",
                                                         "width" : "14%"}),
                         
                         html.P((runStartDate), style = {
@@ -338,7 +356,8 @@ app.layout = html.Div (children = [html.Div("Injection Molding Data Analysis", s
                                                         "border-style" : "solid",
                                                         "text-align" : "center",
                                                         "display" : "inline-block",
-                                                        "height" : "50px",
+                                                        "height" : "40px",
+                                                        "padding": "-10",
                                                         "width" : "10%"}),
                         
                         html.P((runStartTime), style = {
@@ -348,7 +367,8 @@ app.layout = html.Div (children = [html.Div("Injection Molding Data Analysis", s
                                                         "border-style" : "solid",
                                                         "text-align" : "center",
                                                         "display" : "inline-block",
-                                                        "height" : "50px",
+                                                        "height" : "40px",
+                                                        "padding": "-10",
                                                         "width" : "10%"}),
                         
                         html.Div("Run Stop (D/T):", style = {
@@ -358,7 +378,8 @@ app.layout = html.Div (children = [html.Div("Injection Molding Data Analysis", s
                                                         "border-style" : "solid",
                                                         "text-align" : "center",
                                                         "display" : "inline-block",
-                                                        "height" : "50px",
+                                                        "height" : "40px",
+                                                        "padding": "-10",
                                                         "width" : "14%"}),
                         
                         html.P((runStopDate), style = {
@@ -368,7 +389,8 @@ app.layout = html.Div (children = [html.Div("Injection Molding Data Analysis", s
                                                         "border-style" : "solid",
                                                         "text-align" : "center",
                                                         "display" : "inline-block",
-                                                        "height" : "50px",
+                                                        "height" : "40px",
+                                                        "padding": "-10",
                                                         "width" : "10%"}),
                         
                         html.P((runStopTime), style = {
@@ -378,7 +400,8 @@ app.layout = html.Div (children = [html.Div("Injection Molding Data Analysis", s
                                                         "border-style" : "solid",
                                                         "text-align" : "center",
                                                         "display" : "inline-block",
-                                                        "height" : "50px",
+                                                        "height" : "40px",
+                                                        "padding": "-10",
                                                         "width" : "10%"}),
                         
                         html.Div("Total Cycles: ", style = {
@@ -388,7 +411,9 @@ app.layout = html.Div (children = [html.Div("Injection Molding Data Analysis", s
                                                         "border-style" : "solid",
                                                         "text-align" : "center",
                                                         "display" : "inline-block",
-                                                        "height" : "50px",
+                                                        "height" : "40px",
+                                                        "margin-left": "15px",
+                                                        "padding": "-10",
                                                         "width" : "16%"}),
                         
                         html.P((dfCycles), style = {
@@ -398,7 +423,8 @@ app.layout = html.Div (children = [html.Div("Injection Molding Data Analysis", s
                                                         "border-style" : "solid",
                                                         "text-align" : "center",
                                                         "display" : "inline-block",
-                                                        "height" : "50px",
+                                                        "height" : "40px",
+                                                        "padding": "-10",
                                                         "width" : "16%"}),
                         
                         html.Div("Yield:", style = {
@@ -408,7 +434,8 @@ app.layout = html.Div (children = [html.Div("Injection Molding Data Analysis", s
                                                         "border-style" : "solid",
                                                         "text-align" : "center",
                                                         "display" : "inline-block",
-                                                        "height" : "50px",
+                                                        "height" : "40px",
+                                                        "padding": "-10",
                                                         "width" : "16%"}),
                         
                         html.P((machineYield), style = {
@@ -418,7 +445,8 @@ app.layout = html.Div (children = [html.Div("Injection Molding Data Analysis", s
                                                         "border-style" : "solid",
                                                         "text-align" : "center",
                                                         "display" : "inline-block",
-                                                        "height" : "50px",
+                                                        "height" : "40px",
+                                                        "padding": "-10",
                                                         "width" : "16%"}),
                         
                         html.Div("Average Cycle Time:", style = {
@@ -428,7 +456,8 @@ app.layout = html.Div (children = [html.Div("Injection Molding Data Analysis", s
                                                         "border-style" : "solid",
                                                         "text-align" : "center",
                                                         "display" : "inline-block",
-                                                        "height" : "50px",
+                                                        "height" : "40px",
+                                                        "padding": "-10",
                                                         "width" : "16%"}),
                         
                         html.P((aveCycleTime), style = {
@@ -438,21 +467,25 @@ app.layout = html.Div (children = [html.Div("Injection Molding Data Analysis", s
                                                         "border-style" : "solid",
                                                         "text-align" : "center",
                                                         "display" : "inline-block",
-                                                        "height" : "50px",
+                                                        "height" : "40px",
+                                                        "padding": "-10",
                                                         "width" : "16%"}),
                         
-                        html.Div("Defects:", style = {
+                        html.Div("Yield Issues:", style = {
                                                         "color" : "black",
                                                         "font-size" : "30px",
                                                         "background-color" : "Khaki",
                                                         "border-style" : "solid",
                                                         "text-align" : "center",
                                                         "display" : "inline-block",
-                                                        "height" : "50px",
-                                                        "width" : "99%"}),
+                                                        "height" : "35px",
+                                                        "padding": "0",
+                                                        "margin-left": "13px",
+                                                        "width" : "98%"}),
                         
                         html.Img(src='data:image/jpg;base64,{}'.format(encoded_imageChart.decode()), style = {
                                                         "display": "block",
+                                                        "padding": "30",
                                                         "margin-left": "auto",
                                                         "margin-right": "auto",
                                                         "width": "35%"}),   
