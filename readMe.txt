@@ -2,6 +2,9 @@ ISE 535 Fall 2021 Class Project - Casey Darden
 
 Injection Molding Data Analysis
 
+video link - https://youtu.be/fTrcnje9LQ4
+gitHub link - https://github.com/rcdarden/ISE-535-Data-Project
+
 
 • Explain the problem and/or Dataset
 	There is (was) no method to analyze machine yield issues. Having a breakdown of exactly
